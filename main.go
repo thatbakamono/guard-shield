@@ -1,16 +1,25 @@
 package main
 
 import (
-	"fmt"
+	"github.com/op/go-logging"
 	"io"
 	"net"
+	"os"
 )
 
 const sourceAddress = "127.0.0.1:25565"
 const targetAddress = "127.0.0.1:25566"
 
+var log = logging.MustGetLogger("guard-shield")
+var format = logging.MustStringFormatter(
+	"%{color}%{time:15:04:05} %{shortfunc} %{level:.4s} %{color:reset}%{message}"
+)
+
 func main() {
-	fmt.Println("Hello guard-shield")
+	backend := logging.NewLogBackend(os.Stderr, "", 0)
+	backendFormatter := logging.NewBackendFormatter(backend, format)
+
+	logging.SetBackend(backendFormatter)
 
 	listener, err := net.Listen("tcp", sourceAddress)
 
@@ -20,7 +29,7 @@ func main() {
 
 	defer listener.Close()
 
-	fmt.Println("Listening")
+	log.Info("Listening")
 
 	for {
 		connection, err := listener.Accept()
@@ -29,7 +38,7 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Println("Accepted connection")
+		log.Info("Accepted connection")
 
 		go handleClient(connection)
 	}
@@ -37,6 +46,7 @@ func main() {
 
 func handleClient(clientConnection net.Conn) {
 	defer clientConnection.Close()
+	defer log.Info("Closed connection")
 
 	serverConnection, err := net.Dial("tcp", targetAddress)
 
