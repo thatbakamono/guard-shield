@@ -12,7 +12,7 @@ const targetAddress = "127.0.0.1:25566"
 
 var log = logging.MustGetLogger("guard-shield")
 var format = logging.MustStringFormatter(
-	"%{color}%{time:15:04:05} %{shortfunc} %{level:.4s} %{color:reset}%{message}"
+	"%{color}%{time:15:04:05} %{shortfunc} %{level:.4s} %{color:reset}%{message}",
 )
 
 func main() {
@@ -21,30 +21,41 @@ func main() {
 
 	logging.SetBackend(backendFormatter)
 
-	listener, err := net.Listen("tcp", sourceAddress)
+	err := redirect(sourceAddress, targetAddress)
 
 	if err != nil {
 		panic(err)
 	}
+}
+
+func redirect(sourceAddress string, targetAddress string) error {
+	listener, err := net.Listen("tcp", sourceAddress)
+
+	if err != nil {
+		return err
+	}
 
 	defer listener.Close()
 
-	log.Info("Listening")
+	log.Infof("Listening on %s", sourceAddress)
 
 	for {
-		connection, err := listener.Accept()
+		clientConnection, err := listener.Accept()
 
 		if err != nil {
-			panic(err)
+			log.Error("Failed to accept connection")
+			log.Error(err)
+
+			continue
 		}
 
 		log.Info("Accepted connection")
 
-		go handleClient(connection)
+		go handleClient(clientConnection, targetAddress)
 	}
 }
 
-func handleClient(clientConnection net.Conn) {
+func handleClient(clientConnection net.Conn, targetAddress string) {
 	defer clientConnection.Close()
 	defer log.Info("Closed connection")
 
